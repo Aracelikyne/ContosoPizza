@@ -104,9 +104,41 @@ Checking with `GET /pizza` returned `200 OK` with only the two original pizzas.
 
 ## 3. Sales summary function
 
-From the *Work with files and directories in a .NET app* module:
+From the *Work with files and directories in a .NET app* module. `GenerateSalesSummary` writes a sales summary report to `salesTotalDir/salesSummary.txt`: the overall total, followed by each file's total.
 
-This function reads every sales file found under `stores/`, parses the JSON, and adds up the `Total` values.
+```csharp
+void GenerateSalesSummary(IEnumerable<string> salesFiles, string storesDirectory, string reportPath)
+{
+    var details = new List<string>();
+    double grandTotal = 0;
+
+    foreach (var file in salesFiles)
+    {
+        // Reuse CalculateSalesTotal to get the total for just this one file
+        double fileTotal = CalculateSalesTotal(new[] { file });
+        grandTotal += fileTotal;
+
+        // Show the path relative to the stores folder, e.g. "201/sales.json"
+        var fileName = Path.GetRelativePath(storesDirectory, file);
+        details.Add($"  {fileName}: {fileTotal:C}");
+    }
+
+    var report = new List<string>
+    {
+        "Sales Summary",
+        "----------------------------",
+        $" Total Sales: {grandTotal:C}",
+        "",
+        " Details:"
+    };
+    report.AddRange(details);
+
+    // Overwrite the report each run so it always reflects the current files
+    File.WriteAllLines(reportPath, report);
+}
+```
+
+It reuses the module's `CalculateSalesTotal` function to get each file's total:
 
 ```csharp
 double CalculateSalesTotal(IEnumerable<string> salesFiles)
@@ -132,18 +164,27 @@ double CalculateSalesTotal(IEnumerable<string> salesFiles)
 record SalesData (double Total);
 ```
 
-It's called from the top of `Program.cs`, which writes the result to `salesTotalDir/totals.txt`:
+It's called from the top of `Program.cs`:
 
 ```csharp
-var salesFiles = FindFiles(storesDirectory);
-
-var salesTotal = CalculateSalesTotal(salesFiles);
-
-File.AppendAllText(Path.Combine(salesTotalDir, "totals.txt"), $"{salesTotal}{Environment.NewLine}");
+GenerateSalesSummary(salesFiles, storesDirectory, Path.Combine(salesTotalDir, "salesSummary.txt"));
 ```
 
-Output after running `dotnet run` (`salesTotalDir/totals.txt`):
+Output after running `dotnet run` (`salesTotalDir/salesSummary.txt`):
 
 ```
-2012.2
+Sales Summary
+----------------------------
+ Total Sales: $2,012.20
+
+ Details:
+  sales.json: $88.88
+  204/sales.json: $88.88
+  204/salestotals.json: $0.00
+  203/sales.json: $99.00
+  203/salestotals.json: $0.00
+  202/sales.json: $1,234.22
+  202/salestotals.json: $0.00
+  201/sales.json: $501.22
+  201/salestotals.json: $0.00
 ```
