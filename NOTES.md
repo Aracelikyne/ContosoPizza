@@ -106,6 +106,44 @@ Checking with `GET /pizza` returned `200 OK` with only the two original pizzas.
 
 From the *Work with files and directories in a .NET app* module:
 
+This function reads every sales file found under `stores/`, parses the JSON, and adds up the `Total` values.
+
 ```csharp
-// TODO: paste the sales summary function here
+double CalculateSalesTotal(IEnumerable<string> salesFiles)
+{
+    double salesTotal = 0;
+    
+    // Loop over each file path in salesFiles
+    foreach (var file in salesFiles)
+    {      
+        // Read the contents of the file
+        string salesJson = File.ReadAllText(file);
+    
+        // Parse the contents as JSON
+        SalesData? data = JsonConvert.DeserializeObject<SalesData?>(salesJson);
+    
+        // Add the amount found in the Total field to the salesTotal variable
+        salesTotal += data?.Total ?? 0;
+    }
+    
+    return salesTotal;
+}
+
+record SalesData (double Total);
+```
+
+It's called from the top of `Program.cs`, which writes the result to `salesTotalDir/totals.txt`:
+
+```csharp
+var salesFiles = FindFiles(storesDirectory);
+
+var salesTotal = CalculateSalesTotal(salesFiles);
+
+File.AppendAllText(Path.Combine(salesTotalDir, "totals.txt"), $"{salesTotal}{Environment.NewLine}");
+```
+
+Output after running `dotnet run` (`salesTotalDir/totals.txt`):
+
+```
+2012.2
 ```
